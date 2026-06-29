@@ -406,6 +406,7 @@ void Session::notify(const fingerprint_msg_t* msg) {
             mCb->onEnrollmentProgress(msg->data.enroll.finger, msg->data.enroll.samples_remaining);
         } break;
         case FINGERPRINT_TEMPLATE_REMOVED: {
+#ifndef LEGACY_IMPL
             std::vector<int32_t> enrollments;
             enrollments.reserve(NUM_FINGERS);
             for (unsigned int i = 0; i < NUM_FINGERS; i++) {
@@ -414,6 +415,12 @@ void Session::notify(const fingerprint_msg_t* msg) {
                 ALOGD("onRemove(fid=%d)", fid);
                 enrollments.push_back(fid);
             }
+#else
+            LOG(INFO) << "onRemove(fid=" << msg->data.removed.fid
+                      << ", rem=" << msg->data.removed.remaining_templates << ")";
+            std::vector<int> enrollments;
+            enrollments.push_back(msg->data.removed.fid);
+#endif
             mCb->onEnrollmentsRemoved(enrollments);
         } break;
         case FINGERPRINT_AUTHENTICATED: {
@@ -433,6 +440,7 @@ void Session::notify(const fingerprint_msg_t* msg) {
             mEngine->onPointerUpImpl(0);
         } break;
         case FINGERPRINT_TEMPLATE_ENUMERATING: {
+#ifndef LEGACY_IMPL
             std::vector<int32_t> enrollments;
             enrollments.reserve(NUM_FINGERS);
             for (unsigned int i = 0; i < NUM_FINGERS; i++) {
@@ -442,7 +450,18 @@ void Session::notify(const fingerprint_msg_t* msg) {
                 enrollments.push_back(fid);
             }
             mCb->onEnrollmentsEnumerated(enrollments);
+#else
+            LOG(INFO) << "onEnumerate(fid=" << msg->data.enumerated.fid
+                      << ", rem=" << msg->data.enumerated.remaining_templates << ")";
+            static std::vector<int> enrollments;
+            enrollments.push_back(msg->data.enumerated.finger.fid);
+            if (msg->data.enumerated.remaining_templates == 0) {
+                mCb->onEnrollmentsEnumerated(enrollments);
+                enrollments.clear();
+            }
+#endif
         } break;
+#ifndef LEGACY_IMPL
         case FINGERPRINT_CHALLENGE_GENERATED: {
             int64_t challenge = msg->data.extend.data;
             LOG(INFO) << "onChallengeGenerated: " << challenge;
@@ -464,6 +483,7 @@ void Session::notify(const fingerprint_msg_t* msg) {
             LOG(INFO) << "onAuthenticatorIDInvalidated, new auth id: " << new_auth_id;
             mCb->onAuthenticatorIdInvalidated(new_auth_id);
         } break;
+#endif
         default:
             LOG(ERROR) << "received unknown message: " << msg->type;
     }

@@ -44,6 +44,10 @@ cc_library_static {
         "android.hardware.biometrics.common.config",
         "android.hardware.keymaster-V4-ndk",
     ],
+    cflags: select(soong_config_variable("nothing_biometrics_fingerprint", "legacy_impl"), {
+        true: ["-DLEGACY_IMPL"],
+        default: [],
+    }),
 }
 
 cc_binary {

@@ -99,12 +99,20 @@ fingerprint_device_t* FingerprintEngine::openFingerprintHal() {
 
 void FingerprintEngine::generateChallengeImpl(ISessionCallback* /*cb*/) {
     BEGIN_OP(0);
+#ifndef LEGACY_IMPL
     mDevice->generateChallenge(mDevice);
+#else
+    mDevice->pre_enroll(mDevice);
+#endif
 }
 
 void FingerprintEngine::revokeChallengeImpl(ISessionCallback* /*cb*/, int64_t challenge) {
     BEGIN_OP(0);
+#ifndef LEGACY_IMPL
     uint64_t error = mDevice->revokeChallenge(mDevice, challenge);
+#else
+    uint64_t error = mDevice->post_enroll(mDevice);
+#endif
     if (error) {
         LOG(ERROR) << "Failed to revoke challenge=" << challenge << " error=" << error;
     }
@@ -193,7 +201,11 @@ bool FingerprintEngine::onEnrollFingerDown(ISessionCallback* cb,
 
     hw_auth_token_t authToken;
     translate(hat, authToken);
+#ifndef LEGACY_IMPL
     int error = mDevice->enroll(mDevice, &authToken);
+#else
+    int error = mDevice->enroll(mDevice, &authToken, mUserId, 60);
+#endif
     if (error) {
         LOG(ERROR) << "enroll failed: " << error;
         cb->onError(Error::UNABLE_TO_PROCESS, error);
@@ -222,7 +234,11 @@ bool FingerprintEngine::onAuthenticateFingerDown(ISessionCallback* cb, int64_t /
         return false;
     }
 
+#ifndef LEGACY_IMPL
     int error = mDevice->authenticate(mDevice, operationId);
+#else
+    int error = mDevice->authenticate(mDevice, operationId, mUserId);
+#endif
     if (error) {
         LOG(ERROR) << "authenticate failed: " << error;
     }
@@ -284,7 +300,21 @@ void FingerprintEngine::enumerateEnrollmentsImpl(ISessionCallback* /*cb*/) {
 void FingerprintEngine::removeEnrollmentsImpl(ISessionCallback* /*cb*/,
                                               const std::vector<int32_t>& enrollmentIds) {
     BEGIN_OP(0);
+#ifndef LEGACY_IMPL
+    std::vector<uint32_t> fids(enrollmentIds.begin(), enrollmentIds.end());
+    int error = mDevice->remove(mDevice, fids.data(), static_cast<uint32_t>(fids.size()));
+    if (error) {
+        LOG(ERROR) << "Failed to remove enrollments: " << error;
+    }
     mDevice->remove(mDevice, enrollmentIds.data(), enrollmentIds.size());
+#else
+    for (int32_t fid : enrollmentIds) {
+        int error = mDevice->remove(mDevice, mUserId, fid);
+        if (error) {
+            LOG(ERROR) << "remove failed: " << error;
+        }
+    }
+#endif
 }
 
 void FingerprintEngine::getAuthenticatorIdImpl(ISessionCallback* /*cb*/) {

@@ -33,7 +33,11 @@
 #include "LockoutTracker.h"
 
 #include <fstream>
+#ifndef LEGACY_IMPL
 #include "fingerprint-nothing.h"
+#else
+#include "fingerprint-nothing-legacy.h"
+#endif
 
 using namespace ::aidl::android::hardware::biometrics::common;
 
