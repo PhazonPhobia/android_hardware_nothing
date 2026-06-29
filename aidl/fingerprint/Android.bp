@@ -47,6 +47,9 @@ cc_library_static {
     cflags: select(soong_config_variable("nothing_biometrics_fingerprint", "legacy_impl"), {
         true: ["-DLEGACY_IMPL"],
         default: [],
+    }) + select(soong_config_variable("nothing_biometrics_fingerprint", "fod_ui_path"), {
+        any @ flag_val: ["-DFOD_UI_PATH=\"" + flag_val + "\""],
+        default: ["-DFOD_UI_PATH=\"/sys/devices/platform/soc/soc:qcom,dsi-display-primary/fod_ui\""],
     }),
 }
 

@@ -17,6 +17,7 @@
 
 #include "FingerprintEngineUdfps.h"
 
+#include <android-base/file.h>
 #include <android-base/logging.h>
 
 #include <fingerprint.sysprop.h>
@@ -35,6 +36,10 @@ namespace aidl::android::hardware::biometrics::fingerprint {
 FingerprintEngineUdfps::FingerprintEngineUdfps()
     : FingerprintEngine(), mPointerDownTime(0), mUiReadyTime(0) {}
 
+void setFodStatus(bool status) {
+    ::android::base::WriteStringToFile(status ? "1" : "0", FOD_UI_PATH);
+}
+
 ndk::ScopedAStatus FingerprintEngineUdfps::onPointerDownImpl(int32_t /*pointerId*/, int32_t /*x*/,
                                                              int32_t /*y*/, float /*minor*/,
                                                              float /*major*/) {
@@ -51,6 +56,9 @@ ndk::ScopedAStatus FingerprintEngineUdfps::onPointerUpImpl(int32_t /*pointerId*/
     BEGIN_OP(0);
     mUiReadyTime = 0;
     mPointerDownTime = 0;
+    if (Fingerprint::cfg().get<bool>("control_illumination")) {
+        setFodStatus(false);
+    }
     return ndk::ScopedAStatus::ok();
 }
 
@@ -69,6 +77,7 @@ void FingerprintEngineUdfps::fingerDownAction() {
     FingerprintEngine::fingerDownAction();
     mUiReadyTime = 0;
     mPointerDownTime = 0;
+    setFodStatus(true);
 }
 
 void FingerprintEngineUdfps::updateContext(WorkMode mode, ISessionCallback* cb,
